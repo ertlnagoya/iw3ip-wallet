@@ -38,8 +38,22 @@ git push origin develop
 
 ## Bundle ID / Package
 
-- iOS / Android とも `jp.ac.nagoya-u.ertl.iw3ip.wallet` を使用予定。
-- 上流の Sphereon 版 bundle ID と衝突しないように、派生ビルドは必ず上記 ID で署名する。
+- iOS bundle identifier: `jp.ac.nagoya-u.ertl.iw3ip.wallet`
+- Android application ID: `jp.ac.nagoya_u.ertl.iw3ip.wallet`（Android はパッケージ名にハイフンが使えないためアンダースコア）
+- 上流の Sphereon 版 ID と衝突しないように、派生ビルドは必ず上記 ID で署名する。
+- 現状 `app.json` には上記を設定済み。ネイティブプロジェクト（`ios/`, `android/`）への反映は `expo prebuild --clean` の実行が必要。
+
+## ローカル初回セットアップ
+
+`app.json` の設定をネイティブプロジェクトに反映するには次を実行する。
+
+```bash
+# 既存の native dir を再生成（注意: ios/ と android/ の手動変更が消える）
+rm -rf ios android
+npx expo prebuild --clean
+```
+
+その後、IW3IP 側で用意した署名鍵と EAS project を `eas.json` / `app.json` の `extra.eas.projectId` に追加して `eas build` を実行する。
 
 ## 関連ドキュメント
 

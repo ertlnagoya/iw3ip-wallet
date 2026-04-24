@@ -1,50 +1,33 @@
 {
   "expo": {
-    "name": "SphereonWallet",
-    "slug": "SphereonWallet",
+    "name": "IW3IPWallet",
+    "slug": "iw3ip-wallet",
     "version": "0.8.1",
     "orientation": "portrait",
     "entryPoint": "index.js",
-    "scheme": "com.sphereon.ssi.wallet",
+    "scheme": "jp.ac.nagoya-u.ertl.iw3ip.wallet",
     "updates": {
       "fallbackToCacheTimeout": 0
     },
     "jsEngine": "hermes",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.sphereon.ssi.wallet",
+      "bundleIdentifier": "jp.ac.nagoya-u.ertl.iw3ip.wallet",
       "useFrameworks": "static",
-      "associatedDomains": ["applinks:sphereon.com"],
+      "associatedDomains": [],
       "infoPlist": {
         "NSCameraUsageDescription": "Camera is used to scan QR codes for receiving and presenting credentials"
       }
     },
     "android": {
-      "package": "com.sphereon.ssi.wallet",
-      "intentFilters": [
-        {
-          "action": "VIEW",
-          "autoVerify": true,
-          "data": [
-            {
-              "scheme": "https",
-              "host": "sphereon.com",
-              "pathPrefix": "/ssi-wallet"
-            }
-          ],
-          "category": ["BROWSABLE", "DEFAULT"]
-        }
-      ]
+      "package": "jp.ac.nagoya_u.ertl.iw3ip.wallet",
+      "intentFilters": []
     },
     "androidNavigationBar": {
       "barStyle": "light-content",
       "backgroundColor": "#202537"
     },
-    "extra": {
-      "eas": {
-        "projectId": "76b1c6a4-d1d8-421e-8514-ee9db0b197b4"
-      }
-    },
+    "extra": {},
     "plugins": [
       "@animo-id/expo-ausweis-sdk",
       [
