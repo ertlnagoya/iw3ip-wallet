@@ -14,7 +14,7 @@ import {
   SiopV2MachineStates,
   SiopV2ProviderProps,
 } from '../../types/machines/siopV2';
-import {MainRoutesEnum, NavigationBarRoutesEnum, PopupImagesEnum, ScreenRoutesEnum} from '../../types';
+import {MainRoutesEnum, NavigationBarRoutesEnum, PopupImagesEnum, ScreenRoutesEnum, SwitchRoutesEnum} from '../../types';
 import {
   ConnectionType,
   CorrelationIdentifierType,
@@ -35,23 +35,40 @@ const debug: Debugger = Debug(`${APP_ID}:siopV2StateNavigation`);
 
 const SiopV2Context: Context<SiopV2ContextType> = createContext({} as SiopV2ContextType);
 
+// When the listener is invoked without a screen-level `navigation` prop it falls back to
+// `RootNavigation`, whose ref sits at the AppNavigator (LOADING|ONBOARDING|MAIN|AUTHENTICATION).
+// `SIOPV2` is registered one level deeper inside `MainStackNavigator`, so navigating by the bare
+// `SIOPV2` name from the root only resolves when the focused navigator already has it as an
+// ancestor. After flows like OID4VCI's `navigateFinal` jump focus to the Credentials tab, that
+// invariant breaks and React Navigation reports "no navigator handled the action". Addressing the
+// screen via its full root path (`MAIN -> SIOPV2 -> <screen>`) makes the lookup independent of
+// current focus.
+const navigateSiopScreen = (
+  navigation: SiopV2MachineNavigationArgs['navigation'],
+  screen: ScreenRoutesEnum,
+  params: Record<string, any>,
+): void => {
+  if ((navigation as unknown) === (RootNavigation as unknown)) {
+    navigation.navigate(SwitchRoutesEnum.MAIN, {
+      screen: MainRoutesEnum.SIOPV2,
+      params: {screen, params},
+    });
+    return;
+  }
+  navigation.navigate(MainRoutesEnum.SIOPV2, {screen, params});
+};
+
 const navigateLoading = async (args: SiopV2MachineNavigationArgs): Promise<void> => {
   const {navigation} = args;
-  navigation.navigate(MainRoutesEnum.SIOPV2, {
-    screen: ScreenRoutesEnum.LOADING,
-    params: {
-      message: translate('action_getting_information_message'),
-    },
+  navigateSiopScreen(navigation, ScreenRoutesEnum.LOADING, {
+    message: translate('action_getting_information_message'),
   });
 };
 
 const navigateSendingCredentials = async (args: SiopV2MachineNavigationArgs): Promise<void> => {
   const {navigation} = args;
-  navigation.navigate(MainRoutesEnum.SIOPV2, {
-    screen: ScreenRoutesEnum.LOADING,
-    params: {
-      message: translate('action_sharing_credentials_message'),
-    },
+  navigateSiopScreen(navigation, ScreenRoutesEnum.LOADING, {
+    message: translate('action_sharing_credentials_message'),
   });
 };
 
@@ -133,20 +150,17 @@ const navigateAddContact = async (args: SiopV2MachineNavigationArgs): Promise<vo
 
   const federationParties = await lookupFederationParties(contact, trustedAnchors);
 
-  navigation.navigate(MainRoutesEnum.SIOPV2, {
-    screen: ScreenRoutesEnum.NEW_CONTACT_ADD,
-    params: {
-      name: contact.contact.displayName,
-      roles: [CredentialRole.VERIFIER],
-      uri: contact.uri,
-      federations: federationParties,
-      identities: contact.identities,
-      onAliasChange,
-      onCreate,
-      onDecline,
-      onBack,
-      isCreateDisabled,
-    },
+  navigateSiopScreen(navigation, ScreenRoutesEnum.NEW_CONTACT_ADD, {
+    name: contact.contact.displayName,
+    roles: [CredentialRole.VERIFIER],
+    uri: contact.uri,
+    federations: federationParties,
+    identities: contact.identities,
+    onAliasChange,
+    onCreate,
+    onDecline,
+    onBack,
+    isCreateDisabled,
   });
 };
 
@@ -164,17 +178,14 @@ const navigateReviewContact = async (args: SiopV2MachineNavigationArgs): Promise
 
   const federationParties = await lookupFederationParties(contact, trustedAnchors);
 
-  navigation.navigate(MainRoutesEnum.SIOPV2, {
-    screen: ScreenRoutesEnum.NEW_CONTACT_ADD,
-    params: {
-      name: contact.contact.displayName,
-      roles: contact.roles,
-      uri: contact.uri,
-      federations: federationParties,
-      onContinue: onNext,
-      onDecline,
-      onBack,
-    },
+  navigateSiopScreen(navigation, ScreenRoutesEnum.NEW_CONTACT_ADD, {
+    name: contact.contact.displayName,
+    roles: contact.roles,
+    uri: contact.uri,
+    federations: federationParties,
+    onContinue: onNext,
+    onDecline,
+    onBack,
   });
 };
 
@@ -229,16 +240,13 @@ const navigateSelectCredentials = async (args: SiopV2MachineNavigationArgs): Pro
   const creds = await getVerifiableCredentialsFromStorage({parentsOnly: false});
   //fixme: we should pass the hasher function here from the RP
   // const matchingCredentials = await getMatchingCredentials({presentationDefinitionWithLocation});
-  navigation.navigate(MainRoutesEnum.SIOPV2, {
-    screen: ScreenRoutesEnum.CREDENTIAL_SHARE_OVERVIEW,
-    params: {
-      verifier: contact,
-      //presentationDefinition: presentationDefinitionWithLocation.definition,
-      dcqlQuery: authorizationRequestData.dcqlQuery,
-      credentials: creds,
-      onDecline,
-      onSelectAndSend,
-    },
+  navigateSiopScreen(navigation, ScreenRoutesEnum.CREDENTIAL_SHARE_OVERVIEW, {
+    verifier: contact,
+    //presentationDefinition: presentationDefinitionWithLocation.definition,
+    dcqlQuery: authorizationRequestData.dcqlQuery,
+    credentials: creds,
+    onDecline,
+    onSelectAndSend,
   });
   // if (matchingCredentials && matchingCredentials.length === 1) {
   //   navigation.navigate(MainRoutesEnum.SIOPV2, {
@@ -279,9 +287,19 @@ const navigateFinal = async (args: SiopV2MachineNavigationArgs): Promise<void> =
   siopV2Machine.stop();
   debug(`Stopped siopV2 machine`);
 
-  navigation.navigate(NavigationBarRoutesEnum.CREDENTIALS, {
-    screen: ScreenRoutesEnum.CREDENTIALS_OVERVIEW,
-  });
+  if ((navigation as unknown) === (RootNavigation as unknown)) {
+    navigation.navigate(SwitchRoutesEnum.MAIN, {
+      screen: MainRoutesEnum.HOME,
+      params: {
+        screen: NavigationBarRoutesEnum.CREDENTIALS,
+        params: {screen: ScreenRoutesEnum.CREDENTIALS_OVERVIEW},
+      },
+    });
+  } else {
+    navigation.navigate(NavigationBarRoutesEnum.CREDENTIALS, {
+      screen: ScreenRoutesEnum.CREDENTIALS_OVERVIEW,
+    });
+  }
 };
 
 const navigateError = async (args: SiopV2MachineNavigationArgs): Promise<void> => {
@@ -292,26 +310,23 @@ const navigateError = async (args: SiopV2MachineNavigationArgs): Promise<void> =
     return Promise.reject(Error('Missing error in context'));
   }
 
-  navigation.navigate(MainRoutesEnum.SIOPV2, {
-    screen: ScreenRoutesEnum.ERROR,
-    params: {
-      image: PopupImagesEnum.WARNING,
-      title: error.title,
-      details: error.message,
-      ...(error.detailsMessage && {
-        detailsPopup: {
-          buttonCaption: translate('action_view_extra_details'),
-          title: error.detailsTitle,
-          details: error.detailsMessage,
-        },
-      }),
-      primaryButton: {
-        caption: translate('action_ok_label'),
-        accessibilityLabel: `${translate('action_ok_label')}. Exit flow`,
-        onPress: onNext,
+  navigateSiopScreen(navigation, ScreenRoutesEnum.ERROR, {
+    image: PopupImagesEnum.WARNING,
+    title: error.title,
+    details: error.message,
+    ...(error.detailsMessage && {
+      detailsPopup: {
+        buttonCaption: translate('action_view_extra_details'),
+        title: error.detailsTitle,
+        details: error.detailsMessage,
       },
-      onBack,
+    }),
+    primaryButton: {
+      caption: translate('action_ok_label'),
+      accessibilityLabel: `${translate('action_ok_label')}. Exit flow`,
+      onPress: onNext,
     },
+    onBack,
   });
 };
 
